@@ -1,16 +1,13 @@
 package main
 
 import (
+	"log"
 	"net/http"
 	"time"
 
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/chi/v5"
 )
-
-type application struct {
-	config config
-}
 
 func (app *application) mount() http.Handler {
 	r := chi.NewRouter()
@@ -26,13 +23,29 @@ func (app *application) mount() http.Handler {
 	// processing should be stopped.
 	r.Use(middleware.Timeout(60 * time.Second))
 
-	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("hi"))
 	})
 
-	// http.ListenAndServe(":3333", r)
-
 	return r
+}
+
+func (app *application) run(h http.Handler) error {
+	srv := &http.Server{
+		Addr:         app.config.addr,
+		Handler:      h,
+		WriteTimeout: time.Second * 30,
+		ReadTimeout:  time.Second * 10,
+		IdleTimeout:  time.Minute,
+	}
+
+	log.Printf("Server has started at addr %s", app.config.addr)
+
+	return srv.ListenAndServe()
+}
+
+type application struct {
+	config config
 }
 
 type config struct {
